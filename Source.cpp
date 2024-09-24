@@ -110,9 +110,9 @@ bool RegisterWglFunctions()
   return true;
 }
 
-bool ReadWholeFile(std::wstring path, std::string& o_str)
+bool ReadWholeFile(const wchar_t* path, std::string& o_str)
 {
-  HANDLE file = CreateFile(path.c_str(), GENERIC_READ, FILE_SHARE_WRITE | FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+  HANDLE file = CreateFile(path, GENERIC_READ, FILE_SHARE_WRITE | FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
   if (file == INVALID_HANDLE_VALUE)
     return false;
 
