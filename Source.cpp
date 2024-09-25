@@ -13,7 +13,8 @@
 #include <d3d11.h>
 #include <d3dcompiler.h>
 
-HWND window = NULL;
+HWND glWindow  = NULL;
+HWND d3dWindow = NULL;
 
 /************************************************************/
 //
@@ -164,10 +165,10 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
       exit(-1);
     }
 
-    window = CreateWindow(
+    glWindow = CreateWindow(
       L"MyWindowClass",
-      L"Texture Demo",
-      WS_CAPTION| WS_SYSMENU | WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_SIZEBOX,
+      L"OpenGL",
+      WS_CAPTION | WS_SYSMENU | WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_SIZEBOX,
       CW_USEDEFAULT,
       CW_USEDEFAULT,
       CW_USEDEFAULT,
@@ -177,12 +178,25 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
       hInstance,
       NULL
     );
-    if (window == NULL) {
+    d3dWindow = CreateWindow(
+      L"MyWindowClass",
+      L"D3D",
+      WS_CAPTION | WS_SYSMENU | WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_SIZEBOX,
+      CW_USEDEFAULT,
+      CW_USEDEFAULT,
+      CW_USEDEFAULT,
+      CW_USEDEFAULT,
+      NULL,
+      NULL,
+      hInstance,
+      NULL
+    );
+    if (glWindow == NULL || d3dWindow == NULL) {
       printf("CreateWindow failed: %d", GetLastError());
       exit(-1);
     }
 
-    dc = GetDC(window);
+    dc = GetDC(glWindow);
     {
       RegisterWglFunctions();
 
@@ -256,10 +270,23 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
       }
       glEnable(GL_DEBUG_OUTPUT);
       glDebugMessageCallback(DebugCallback, nullptr);
-
     }
 
-    ShowWindow(window, SW_MAXIMIZE);
+    HMONITOR monitor = MonitorFromWindow(glWindow, MONITOR_DEFAULTTOPRIMARY);
+    MONITORINFO monitorInfo;
+    monitorInfo.cbSize = sizeof(MONITORINFO);
+    GetMonitorInfoW(monitor, &monitorInfo);
+
+    int monitorWidth  = monitorInfo.rcWork.right  - monitorInfo.rcWork.left;
+    int monitorHeight = monitorInfo.rcWork.bottom - monitorInfo.rcWork.top ;
+
+    int reqWindowWidth  = monitorWidth / 2;
+    int reqWindowHeight = reqWindowWidth;
+    SetWindowPos(glWindow , NULL, 0             , (monitorHeight - reqWindowHeight) / 2, reqWindowWidth, reqWindowHeight, 0);
+    SetWindowPos(d3dWindow, NULL, reqWindowWidth, (monitorHeight - reqWindowHeight) / 2, reqWindowWidth, reqWindowHeight, 0);
+
+    ShowWindow(glWindow , SW_SHOW);
+    ShowWindow(d3dWindow, SW_SHOW);
   }
 
   //Load the image file with default stbi_load settings. No flipping.
@@ -274,28 +301,28 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
   const Vec2 LOWER_LEFT  = { -1, -1 };
   const Vec2 LOWER_RIGHT = { +1, -1 };
   Vertex quadVertices[NUM_VERTICES] = {
-    { LOWER_LEFT , { 0, 0 } },
-    { LOWER_RIGHT, { 1, 0 } },
-    { UPPER_RIGHT, { 1, 1 } },
-    { UPPER_RIGHT, { 1, 1 } },
-    { UPPER_LEFT , { 0, 1 } },
-    { LOWER_LEFT , { 0, 0 } },
+    { LOWER_LEFT , { 0, 1 } },
+    { LOWER_RIGHT, { 1, 1 } },
+    { UPPER_RIGHT, { 1, 0 } },
+    { UPPER_RIGHT, { 1, 0 } },
+    { UPPER_LEFT , { 0, 0 } },
+    { LOWER_LEFT , { 0, 1 } },
   };
 
   //Get the window size at the start of the application.
   //Note that we do not react to any window size changes later on.
   //Behavior when moving or resizing windows might not be as expected
   RECT rect;
-  GetClientRect(window, &rect);
+  GetClientRect(glWindow, &rect);
   int windowWidth   = rect.right  - rect.left;
   int windowHeight =  rect.bottom - rect.top ;
 
   float aspectRatio = (float)windowHeight / windowWidth;
 
-  //Edit this value to switch graphics backend
-  const GraphicsBackend GRAPHICS_API = GraphicsBackend::OPEN_GL;
-
-  if (GRAPHICS_API == GraphicsBackend::OPEN_GL) {
+  //OpenGL
+  GLuint glQuadVertexArray = 0;
+  GLuint glTexId = 0;
+  {
     float viewMatrix[9] = {
       aspectRatio * 0.6f, 0, 0,
       0, 0.6f, 0,
@@ -307,9 +334,8 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     glBindBuffer(GL_ARRAY_BUFFER, quadVertexBuf );
     glBufferData(GL_ARRAY_BUFFER, NUM_VERTICES * sizeof(Vertex), quadVertices, GL_STATIC_DRAW);
 
-    GLuint quadVertexArr = 0;
-    glGenVertexArrays(1, &quadVertexArr);
-    glBindVertexArray(quadVertexArr);
+    glGenVertexArrays(1, &glQuadVertexArray);
+    glBindVertexArray(glQuadVertexArray);
     glBindBuffer(GL_ARRAY_BUFFER, quadVertexBuf);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
     glEnableVertexAttribArray(0);
@@ -346,9 +372,8 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
       glDeleteShader(vShader);
     }
 
-    GLuint texId = 0;
-    glGenTextures(1, &texId);
-    glBindTexture(GL_TEXTURE_2D, texId);
+    glGenTextures(1, &glTexId);
+    glBindTexture(GL_TEXTURE_2D, glTexId);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, texWidth, texHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, texBuff);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -366,25 +391,18 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
 
-    while (true) {
-      MSG msg;
-      while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE) != 0) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
-      }
-
-      glViewport(0, 0, windowWidth, windowHeight);
-      glClearColor(0, 0, 0, 1);
-      glClear(GL_COLOR_BUFFER_BIT);
-      glActiveTexture(GL_TEXTURE0);
-      glBindTexture(GL_TEXTURE_2D, texId);
-      glBindVertexArray(quadVertexArr);
-      glDrawArrays(GL_TRIANGLES, 0, NUM_VERTICES);
-      SwapBuffers(dc);
-    }
+    glClearColor(0, 0, 0, 1);
+    glViewport(0, 0, windowWidth, windowHeight);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, glTexId);
+    glBindVertexArray(glQuadVertexArray);
   }
 
-  if (GRAPHICS_API == GraphicsBackend::DIRECT3D) {
+  //DIRECT3D
+  ID3D11DeviceContext* devicecontext;
+  IDXGISwapChain* swapchain;
+  ID3D11RenderTargetView* rendertargetview;
+  {
     float viewMatrix[16] = {
       aspectRatio * 0.6f, 0, 0, 0,
       0, 0.6f, 0, 0,
@@ -399,20 +417,17 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     swapchaindesc.SampleDesc.Count  = 1;
     swapchaindesc.BufferUsage       = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     swapchaindesc.BufferCount       = 2;
-    swapchaindesc.OutputWindow      = window;
+    swapchaindesc.OutputWindow      = d3dWindow;
     swapchaindesc.Windowed          = TRUE;
     swapchaindesc.SwapEffect        = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 
-    IDXGISwapChain* swapchain;
     ID3D11Device* device;
-    ID3D11DeviceContext* devicecontext;
 
     D3D11CreateDeviceAndSwapChain(0, D3D_DRIVER_TYPE_HARDWARE, 0, 0, 0, 0, 7, &swapchaindesc, &swapchain, &device, 0, &devicecontext);
     swapchain->GetDesc(&swapchaindesc);
 
     ID3D11Texture2D* rendertarget;
     swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&rendertarget);
-    ID3D11RenderTargetView* rendertargetview;
     device->CreateRenderTargetView(rendertarget, 0, &rendertargetview);
 
     ID3DBlob* shaderCompilationOutput;
@@ -500,48 +515,50 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     {
       Constants* constants = (Constants*)constantbufferMSR.pData;
       memcpy(constants->viewMatrix, viewMatrix, sizeof(viewMatrix));
-      int stop = 0;
-      stop++;
     }
     devicecontext->Unmap(constantbuffer, 0);
 
-    D3D11_DEPTH_STENCIL_DESC depthstencildesc = {};
-    depthstencildesc.DepthEnable    = FALSE;
-    depthstencildesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-    depthstencildesc.DepthFunc      = D3D11_COMPARISON_LESS;
+    D3D11_VIEWPORT viewport = { 0, 0, (float)swapchaindesc.BufferDesc.Width, (float)swapchaindesc.BufferDesc.Height, 0, 1 };
+    devicecontext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    devicecontext->IASetInputLayout(inputlayout);
+    unsigned int stride = sizeof(Vertex);
+    unsigned int offset = 0;
+    devicecontext->IASetVertexBuffers(0, 1, &vertexbuffer, &stride, &offset);
+    devicecontext->VSSetShader(vertexshader, 0, 0);
+    devicecontext->RSSetViewports(1, &viewport);
+    devicecontext->PSSetShader(pixelshader, 0, 0);
+    devicecontext->VSSetConstantBuffers(0, 1, &constantbuffer);
 
-    ID3D11DepthStencilState* depthstencilstate;
-    device->CreateDepthStencilState(&depthstencildesc, &depthstencilstate);
+    devicecontext->RSSetState(rasterizerstate);
+    devicecontext->PSSetSamplers(0, 1, &samplerstate);
+    devicecontext->PSSetShaderResources(0, 1, &textureSRV);
+  }
 
+  while (true) {
+    MSG msg;
+    while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE) != 0) {
+      TranslateMessage(&msg);
+      DispatchMessage(&msg);
+    }
 
-
-
-    while (true) {
+    //Draw OpenGL
+    {
       MSG msg;
       while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE) != 0) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
       }
 
-      D3D11_VIEWPORT viewport = { 0, 0, (float)swapchaindesc.BufferDesc.Width, (float)swapchaindesc.BufferDesc.Height, 0, 1 };
-      devicecontext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-      devicecontext->IASetInputLayout(inputlayout);
-      unsigned int stride = sizeof(Vertex);
-      unsigned int offset = 0;
-      devicecontext->IASetVertexBuffers(0, 1, &vertexbuffer, &stride, &offset);
-      devicecontext->VSSetShader(vertexshader, 0, 0);
-      devicecontext->RSSetViewports(1, &viewport);
-      devicecontext->PSSetShader(pixelshader, 0, 0);
-      devicecontext->OMSetRenderTargets(1, &rendertargetview, 0);
-      devicecontext->VSSetConstantBuffers(0, 1, &constantbuffer);
+      glClear(GL_COLOR_BUFFER_BIT);
+      glDrawArrays(GL_TRIANGLES, 0, NUM_VERTICES);
+      SwapBuffers(dc);
+    }
 
+    //Draw D3D
+    {
+      devicecontext->OMSetRenderTargets(1, &rendertargetview, 0);
       float col[] = { 0, 0, 0, 1 };
       devicecontext->ClearRenderTargetView(rendertargetview, col);
-      devicecontext->OMSetDepthStencilState(depthstencilstate, 0);
-      devicecontext->RSSetState(rasterizerstate);
-      devicecontext->PSSetSamplers(0, 1, &samplerstate);
-      devicecontext->PSSetShaderResources(0, 1, &textureSRV);
-
       devicecontext->Draw(NUM_VERTICES, 0);
       swapchain->Present(1, 0);
     }
