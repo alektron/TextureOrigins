@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <string_view>
+#include <string>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -136,11 +137,104 @@ struct Vec2
   float y = 0;
 };
 
-struct Vertex
+struct Vec3
+{
+  float x = 0;
+  float y = 0;
+  float z = 0;
+};
+
+struct Vertex2D
 {
   Vec2 Position;
   Vec2 TexCoord;
 };
+
+struct Vertex3D
+{
+  Vec3 Position;
+  Vec2 TexCoord;
+};
+
+struct Matrix
+{
+  float M[4][4] = { 0 };
+};
+
+Matrix operator*(const Matrix& m1, const Matrix& m2)
+{
+  return
+  {
+    m1.M[0][0] * m2.M[0][0] + m1.M[0][1] * m2.M[1][0] + m1.M[0][2] * m2.M[2][0] + m1.M[0][3] * m2.M[3][0],
+    m1.M[0][0] * m2.M[0][1] + m1.M[0][1] * m2.M[1][1] + m1.M[0][2] * m2.M[2][1] + m1.M[0][3] * m2.M[3][1],
+    m1.M[0][0] * m2.M[0][2] + m1.M[0][1] * m2.M[1][2] + m1.M[0][2] * m2.M[2][2] + m1.M[0][3] * m2.M[3][2],
+    m1.M[0][0] * m2.M[0][3] + m1.M[0][1] * m2.M[1][3] + m1.M[0][2] * m2.M[2][3] + m1.M[0][3] * m2.M[3][3],
+    m1.M[1][0] * m2.M[0][0] + m1.M[1][1] * m2.M[1][0] + m1.M[1][2] * m2.M[2][0] + m1.M[1][3] * m2.M[3][0],
+    m1.M[1][0] * m2.M[0][1] + m1.M[1][1] * m2.M[1][1] + m1.M[1][2] * m2.M[2][1] + m1.M[1][3] * m2.M[3][1],
+    m1.M[1][0] * m2.M[0][2] + m1.M[1][1] * m2.M[1][2] + m1.M[1][2] * m2.M[2][2] + m1.M[1][3] * m2.M[3][2],
+    m1.M[1][0] * m2.M[0][3] + m1.M[1][1] * m2.M[1][3] + m1.M[1][2] * m2.M[2][3] + m1.M[1][3] * m2.M[3][3],
+    m1.M[2][0] * m2.M[0][0] + m1.M[2][1] * m2.M[1][0] + m1.M[2][2] * m2.M[2][0] + m1.M[2][3] * m2.M[3][0],
+    m1.M[2][0] * m2.M[0][1] + m1.M[2][1] * m2.M[1][1] + m1.M[2][2] * m2.M[2][1] + m1.M[2][3] * m2.M[3][1],
+    m1.M[2][0] * m2.M[0][2] + m1.M[2][1] * m2.M[1][2] + m1.M[2][2] * m2.M[2][2] + m1.M[2][3] * m2.M[3][2],
+    m1.M[2][0] * m2.M[0][3] + m1.M[2][1] * m2.M[1][3] + m1.M[2][2] * m2.M[2][3] + m1.M[2][3] * m2.M[3][3],
+    m1.M[3][0] * m2.M[0][0] + m1.M[3][1] * m2.M[1][0] + m1.M[3][2] * m2.M[2][0] + m1.M[3][3] * m2.M[3][0],
+    m1.M[3][0] * m2.M[0][1] + m1.M[3][1] * m2.M[1][1] + m1.M[3][2] * m2.M[2][1] + m1.M[3][3] * m2.M[3][1],
+    m1.M[3][0] * m2.M[0][2] + m1.M[3][1] * m2.M[1][2] + m1.M[3][2] * m2.M[2][2] + m1.M[3][3] * m2.M[3][2],
+    m1.M[3][0] * m2.M[0][3] + m1.M[3][1] * m2.M[1][3] + m1.M[3][2] * m2.M[2][3] + m1.M[3][3] * m2.M[3][3],
+  };
+}
+
+Matrix Ortho_LeftHanded_NegOneToOne(float right, float left, float top, float bottom, float zNear, float zFar)
+{
+  Matrix Result;
+  Result.M[0][0] =   2.f / (right - left);
+  Result.M[1][1] =   2.f / (top - bottom);
+  Result.M[2][2] =   2.f / (zFar - zNear);
+  Result.M[3][0] = - (right + left) / (right - left);
+  Result.M[3][1] = - (top + bottom) / (top - bottom);
+  Result.M[3][2] = - (zFar + zNear) / (zFar - zNear);
+  Result.M[3][3] = 1;
+  return Result;
+}
+
+Matrix Ortho_LeftHanded_ZeroToOne(float right, float left, float top, float bottom, float zNear, float zFar)
+{
+  Matrix Result;
+  Result.M[0][0] =   2.f / (right - left);
+  Result.M[1][1] =   2.f / (top - bottom);
+  Result.M[2][2] =   1.f / (zFar - zNear);
+  Result.M[3][0] = - (right + left) / (right - left);
+  Result.M[3][1] = - (top + bottom) / (top - bottom);
+  Result.M[3][2] = - zNear / (zFar - zNear);
+  Result.M[3][3] = 1;
+  return Result;
+}
+
+Matrix Ortho_RightHanded_NegOneToOne(float right, float left, float top, float bottom, float zNear, float zFar)
+{
+  Matrix Result;
+  Result.M[0][0] =   2.f / (right - left);
+  Result.M[1][1] =   2.f / (top - bottom);
+  Result.M[2][2] = - 2.f / (zFar - zNear);
+  Result.M[3][0] = - (right + left) / (right - left);
+  Result.M[3][1] = - (top + bottom) / (top - bottom);
+  Result.M[3][2] = - (zFar + zNear) / (zFar - zNear);
+  Result.M[3][3] = 1;
+  return Result;
+}
+
+Matrix Ortho_RightHanded_ZeroToOne(float right, float left, float top, float bottom, float zNear, float zFar)
+{
+  Matrix Result;
+  Result.M[0][0] =   2.f / (right - left);
+  Result.M[1][1] =   2.f / (top - bottom);
+  Result.M[2][2] = - 1.f / (zFar - zNear);
+  Result.M[3][0] = - (right + left) / (right - left);
+  Result.M[3][1] = - (top + bottom) / (top - bottom);
+  Result.M[3][2] = - zNear / (zFar - zNear);
+  Result.M[3][3] = 1;
+  return Result;
+}
 
 int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
@@ -222,7 +316,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
         WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
         WGL_COLOR_BITS_ARB, 8,
         WGL_ALPHA_BITS_ARB, 8,
-        WGL_DEPTH_BITS_ARB, 0,
+        WGL_DEPTH_BITS_ARB, 8,
         WGL_STENCIL_BITS_ARB, 0,
         WGL_SAMPLE_BUFFERS_ARB, (int)GL_FALSE,
         WGL_SAMPLES_ARB, 0,
@@ -294,13 +388,15 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
   int texWidth, texHeight, numChannels;
   stbi_uc* texBuff = stbi_load("Texture.jpg", &texWidth, &texHeight, &numChannels, 4);
 
+//#define ENABLE_3D
+#ifndef ENABLE_3D
   //Quad that we can render our texture to
   const size_t NUM_VERTICES = 6;
   const Vec2 UPPER_LEFT  = { -1, +1 };
   const Vec2 UPPER_RIGHT = { +1, +1 };
   const Vec2 LOWER_LEFT  = { -1, -1 };
   const Vec2 LOWER_RIGHT = { +1, -1 };
-  Vertex quadVertices[NUM_VERTICES] = {
+  Vertex2D vertices[NUM_VERTICES] = {
     { LOWER_LEFT , { 0, 1 } },
     { LOWER_RIGHT, { 1, 1 } },
     { UPPER_RIGHT, { 1, 0 } },
@@ -308,6 +404,40 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     { UPPER_LEFT , { 0, 0 } },
     { LOWER_LEFT , { 0, 1 } },
   };
+#else
+  const size_t NUM_VERTICES = 18;
+  const Vec3 UPPER_L_FRONT = { -1, +1, -1 };
+  const Vec3 UPPER_R_FRONT = { +1, +1, -1 };
+  const Vec3 LOWER_L_FRONT = { -1, -1, -1 };
+  const Vec3 LOWER_R_FRONT = { +1, -1, -1 };
+  const Vec3 UPPER_L_BACK  = { -1, +1, +1 };
+  const Vec3 UPPER_R_BACK  = { +1, +1, +1 };
+  const Vec3 LOWER_L_BACK  = { -1, -1, +1 };
+  const Vec3 LOWER_R_BACK  = { +1, -1, +1 };
+  Vertex3D vertices[NUM_VERTICES] = {
+    { LOWER_L_FRONT, { 1, 1 } },
+    { LOWER_R_FRONT, { 0, 1 } },
+    { UPPER_R_FRONT, { 0, 0 } },
+    { UPPER_R_FRONT, { 0, 0 } },
+    { UPPER_L_FRONT, { 1, 0 } },
+    { LOWER_L_FRONT, { 1, 1 } },
+
+    { LOWER_L_BACK , { 0, 1 } },
+    { LOWER_R_BACK , { 1, 1 } },
+    { UPPER_R_BACK , { 1, 0 } },
+    { UPPER_R_BACK , { 1, 0 } },
+    { UPPER_L_BACK , { 0, 0 } },
+    { LOWER_L_BACK , { 0, 1 } },
+
+    { UPPER_L_FRONT, { 1, 1 } },
+    { UPPER_R_FRONT, { 0, 1 } },
+    { UPPER_R_BACK, { 0, 0 } },
+    { UPPER_R_BACK, { 0, 0 } },
+    { UPPER_L_BACK, { 1, 0 } },
+    { UPPER_L_FRONT, { 1, 1 } },
+  };
+#endif
+
 
   //Get the window size at the start of the application.
   //Note that we do not react to any window size changes later on.
@@ -318,37 +448,41 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
   int windowHeight =  rect.bottom - rect.top ;
 
   float aspectRatio = (float)windowHeight / windowWidth;
+  float scaleX = aspectRatio * 0.6f;
+  float scaleY = 0.6f;
 
   //OpenGL
   GLuint glQuadVertexArray = 0;
   GLuint glTexId = 0;
+  GLuint glShader = 0;
   {
-    float viewMatrix[9] = {
-      aspectRatio * 0.6f, 0, 0,
-      0, 0.6f, 0,
-      0, 0, 1,
-    };
-
     GLuint quadVertexBuf = 0;
     glGenBuffers(1, &quadVertexBuf );
     glBindBuffer(GL_ARRAY_BUFFER, quadVertexBuf );
-    glBufferData(GL_ARRAY_BUFFER, NUM_VERTICES * sizeof(Vertex), quadVertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, NUM_VERTICES * sizeof(vertices[0]), vertices, GL_STATIC_DRAW);
 
     glGenVertexArrays(1, &glQuadVertexArray);
     glBindVertexArray(glQuadVertexArray);
     glBindBuffer(GL_ARRAY_BUFFER, quadVertexBuf);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
+#ifdef ENABLE_3D
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertices[0]), 0);
+#else
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(vertices[0]), 0);
+#endif
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const void*)sizeof(Vec2));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(vertices[0]), (const void*)sizeof(vertices[0].Position));
     glEnableVertexAttribArray(1);
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 
-    GLuint shader = 0;
     {
       std::string vShaderContent;
-      ReadWholeFile(L"./TexQuadV.glsl", vShaderContent);
+#ifdef ENABLE_3D
+      ReadWholeFile(L"./TexQuadV_3d.glsl", vShaderContent);
+#else
+      ReadWholeFile(L"./TexQuadV_2d.glsl", vShaderContent);
+#endif
       GLuint vShader = glCreateShader(GL_VERTEX_SHADER);
 
       const char* vSource = vShaderContent.c_str();
@@ -356,17 +490,21 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
       glCompileShader(vShader);
 
       std::string fShaderContent;
-      ReadWholeFile(L"./TexQuadF.glsl", fShaderContent);
+#ifdef ENABLE_3D
+      ReadWholeFile(L"./TexQuadF_3d.glsl", fShaderContent);
+#else
+      ReadWholeFile(L"./TexQuadF_2d.glsl", fShaderContent);
+#endif
       GLuint fShader = glCreateShader(GL_FRAGMENT_SHADER);
 
       const char* fSource = fShaderContent.c_str();
       glShaderSource(fShader, 1, &fSource, NULL);
       glCompileShader(fShader);
 
-      shader = glCreateProgram();
-      glAttachShader(shader, vShader);
-      glAttachShader(shader, fShader);
-      glLinkProgram(shader);
+      glShader = glCreateProgram();
+      glAttachShader(glShader, vShader);
+      glAttachShader(glShader, fShader);
+      glLinkProgram(glShader);
 
       glDeleteShader(fShader);
       glDeleteShader(vShader);
@@ -381,15 +519,14 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    GLuint shader_ViewMatrix = glGetUniformLocation(shader, "u_ViewMatrix");
-    GLuint shader_Texture    = glGetUniformLocation(shader, "u_Texture");
-    glUseProgram(shader);
-    glUniformMatrix3fv(shader_ViewMatrix, 1, GL_FALSE, viewMatrix);
+    GLuint shader_Texture    = glGetUniformLocation(glShader, "u_Texture");
+    glUseProgram(glShader);
 
-    //Not strictly necessary but we want to make sure that both implementations show the same side of the quad
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
-    glFrontFace(GL_CCW);
+    glDisable(GL_CULL_FACE);
+
+#ifdef ENABLE_3D
+    glEnable(GL_DEPTH_TEST);
+#endif
 
     glClearColor(0, 0, 0, 1);
     glViewport(0, 0, windowWidth, windowHeight);
@@ -402,14 +539,10 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
   ID3D11DeviceContext* devicecontext;
   IDXGISwapChain* swapchain;
   ID3D11RenderTargetView* rendertargetview;
+  ID3D11Buffer* constantbuffer;
+  ID3D11DepthStencilView* depthbufferDSV;
+  struct Constants { float viewMatrix[16]; float projMatrix[16]; };
   {
-    float viewMatrix[16] = {
-      aspectRatio * 0.6f, 0, 0, 0,
-      0, 0.6f, 0, 0,
-      0, 0, 1, 0,
-      0, 0, 0, 1,
-    };
-
     DXGI_SWAP_CHAIN_DESC swapchaindesc = {};
     swapchaindesc.BufferDesc.Width  = windowWidth; // use window width
     swapchaindesc.BufferDesc.Height = windowHeight; // use window height
@@ -433,27 +566,41 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     ID3DBlob* shaderCompilationOutput;
     ID3D11VertexShader* vertexshader;
     ID3D11PixelShader* pixelshader;
-    D3DCompileFromFile(L"TexQuad.hlsl", 0, 0, "vertex_shader", "vs_5_0", 0, 0, &shaderCompilationOutput, 0);
+#ifdef ENABLE_3D
+    D3DCompileFromFile(L"TexQuad_3d.hlsl", 0, 0, "vertex_shader", "vs_5_0", 0, 0, &shaderCompilationOutput, 0);
+#else
+    D3DCompileFromFile(L"TexQuad_2d.hlsl", 0, 0, "vertex_shader", "vs_5_0", 0, 0, &shaderCompilationOutput, 0);
+#endif
     device->CreateVertexShader(shaderCompilationOutput->GetBufferPointer(), shaderCompilationOutput->GetBufferSize(), 0, &vertexshader);
+
 
 
     D3D11_INPUT_ELEMENT_DESC inputelementdesc[] =
     {
-      { "POS", 0, DXGI_FORMAT_R32G32_FLOAT, 0,                            0, D3D11_INPUT_PER_VERTEX_DATA, 0 }, // float2 position
+#ifdef ENABLE_3D
+      { "POS", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,                            0, D3D11_INPUT_PER_VERTEX_DATA, 0 }, // float2 position
+#else
+      { "POS", 0, DXGI_FORMAT_R32G32_FLOAT   , 0,                            0, D3D11_INPUT_PER_VERTEX_DATA, 0 }, // float2 position
+#endif
       { "TEX", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }, // float2 texcoord
     };
 
     ID3D11InputLayout* inputlayout;
     device->CreateInputLayout(inputelementdesc, ARRAYSIZE(inputelementdesc), shaderCompilationOutput->GetBufferPointer(), shaderCompilationOutput->GetBufferSize(), &inputlayout);
 
-    D3DCompileFromFile(L"TexQuad.hlsl", 0, 0, "pixel_shader", "ps_5_0", 0, 0, &shaderCompilationOutput, 0);
+#ifdef ENABLE_3D
+    D3DCompileFromFile(L"TexQuad_3d.hlsl", 0, 0, "pixel_shader", "ps_5_0", 0, 0, &shaderCompilationOutput, 0);
+#else
+    D3DCompileFromFile(L"TexQuad_2d.hlsl", 0, 0, "pixel_shader", "ps_5_0", 0, 0, &shaderCompilationOutput, 0);
+#endif
     device->CreatePixelShader(shaderCompilationOutput->GetBufferPointer(), shaderCompilationOutput->GetBufferSize(), 0, &pixelshader);
 
     //Not strictly necessary but we want to make sure that both implementations show the same side of the quad
     D3D11_RASTERIZER_DESC rasterizerdesc = {};
     rasterizerdesc.FillMode = D3D11_FILL_SOLID;
-    rasterizerdesc.CullMode = D3D11_CULL_BACK;
+    rasterizerdesc.CullMode = D3D11_CULL_NONE;
     rasterizerdesc.FrontCounterClockwise = TRUE;
+    rasterizerdesc.DepthClipEnable = TRUE;
 
     ID3D11RasterizerState* rasterizerstate;
     device->CreateRasterizerState(&rasterizerdesc, &rasterizerstate);
@@ -468,7 +615,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     ID3D11SamplerState* samplerstate;
     device->CreateSamplerState(&samplerdesc, &samplerstate);
 
-    struct Constants { float viewMatrix[16]; };
 
     D3D11_BUFFER_DESC constantbufferdesc = {};
     constantbufferdesc.ByteWidth      = sizeof(Constants);
@@ -476,7 +622,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     constantbufferdesc.BindFlags      = D3D11_BIND_CONSTANT_BUFFER;
     constantbufferdesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
-    ID3D11Buffer* constantbuffer;
     device->CreateBuffer(&constantbufferdesc, nullptr, &constantbuffer);
 
     D3D11_TEXTURE2D_DESC texturedesc = {};
@@ -502,26 +647,27 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     device->CreateShaderResourceView(texture, nullptr, &textureSRV);
 
     D3D11_BUFFER_DESC vertexbufferdesc = {};
-    vertexbufferdesc.ByteWidth = sizeof(Vertex) * NUM_VERTICES;
+    vertexbufferdesc.ByteWidth = sizeof(vertices);
     vertexbufferdesc.Usage     = D3D11_USAGE_IMMUTABLE;
     vertexbufferdesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 
-    D3D11_SUBRESOURCE_DATA vertexbufferSRD = { quadVertices };
+    D3D11_SUBRESOURCE_DATA vertexbufferSRD = { vertices };
     ID3D11Buffer* vertexbuffer;
     device->CreateBuffer(&vertexbufferdesc, &vertexbufferSRD, &vertexbuffer);
 
-    D3D11_MAPPED_SUBRESOURCE constantbufferMSR;
-    devicecontext->Map(constantbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &constantbufferMSR);
-    {
-      Constants* constants = (Constants*)constantbufferMSR.pData;
-      memcpy(constants->viewMatrix, viewMatrix, sizeof(viewMatrix));
-    }
-    devicecontext->Unmap(constantbuffer, 0);
+    D3D11_TEXTURE2D_DESC depthbufferdesc;
+    rendertarget->GetDesc(&depthbufferdesc);
+    depthbufferdesc.Format    = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    depthbufferdesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+
+    ID3D11Texture2D* depthbuffer;
+    device->CreateTexture2D(&depthbufferdesc, nullptr, &depthbuffer);
+    device->CreateDepthStencilView(depthbuffer, nullptr, &depthbufferDSV);
 
     D3D11_VIEWPORT viewport = { 0, 0, (float)swapchaindesc.BufferDesc.Width, (float)swapchaindesc.BufferDesc.Height, 0, 1 };
     devicecontext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     devicecontext->IASetInputLayout(inputlayout);
-    unsigned int stride = sizeof(Vertex);
+    unsigned int stride = sizeof(vertices[0]);
     unsigned int offset = 0;
     devicecontext->IASetVertexBuffers(0, 1, &vertexbuffer, &stride, &offset);
     devicecontext->VSSetShader(vertexshader, 0, 0);
@@ -534,6 +680,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     devicecontext->PSSetShaderResources(0, 1, &textureSRV);
   }
 
+  float t = 0;
   while (true) {
     MSG msg;
     while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE) != 0) {
@@ -541,26 +688,86 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
       DispatchMessage(&msg);
     }
 
+#ifdef ENABLE_3D
+    Matrix rotY = {
+      cos(-t) , 0     , sin(-t), 0,
+      0       , 1     , 0      , 0,
+      -sin(-t), 0     , cos(-t), 0,
+      0       , 0     , 0      , 1,
+    };
+
+    Matrix rotX = {
+      1, 0       , 0        , 0,
+      0, cos(.61), -sin(.61), 0,
+      0, sin(.61),  cos(.61), 0,
+      0, 0       , 0        , 1,
+    };
+
+    Matrix view = {
+      1     , 0     , 0     , 0,
+      0     , 1     , 0     , 0,
+      0     , 0     , 1     , 0,
+      sin(t) * 2, 1     , cos(t) * 2, 1,
+    };
+
+    Matrix viewMatrix = rotX * rotY * view;
+#else
+    Matrix viewMatrix = {
+      aspectRatio * 0.6f, 0, 0, 0,
+      0, 0.6f, 0, 0,
+      0, 0, 1, 0,
+      0, 0, 0, 1,
+  };
+#endif
+
     //Draw OpenGL
     {
-      MSG msg;
-      while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE) != 0) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
-      }
 
-      glClear(GL_COLOR_BUFFER_BIT);
+      GLuint shader_ViewMatrix = glGetUniformLocation(glShader, "u_ViewMatrix");
+      glUniformMatrix4fv(shader_ViewMatrix, 1, GL_FALSE, viewMatrix.M[0]);
+
+#ifdef ENABLE_3D
+      const Matrix projMatrix = Ortho_RightHanded_NegOneToOne(2, -2, 2, -2, 0, 100);
+
+      GLuint shader_ProjMatrix = glGetUniformLocation(glShader, "u_ProjMatrix");
+      glUniformMatrix4fv(shader_ProjMatrix, 1, GL_FALSE, projMatrix.M[0]);
+#endif
+
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       glDrawArrays(GL_TRIANGLES, 0, NUM_VERTICES);
       SwapBuffers(dc);
     }
 
     //Draw D3D
     {
-      devicecontext->OMSetRenderTargets(1, &rendertargetview, 0);
+
+      D3D11_MAPPED_SUBRESOURCE constantbufferMSR;
+      devicecontext->Map(constantbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &constantbufferMSR);
+      {
+        Constants* constants = (Constants*)constantbufferMSR.pData;
+        memcpy(constants->viewMatrix, &viewMatrix, sizeof(viewMatrix));
+#ifdef ENABLE_3D
+        const Matrix projMatrix = Ortho_RightHanded_ZeroToOne(2, -2, 2, -2, 0, 100);
+
+        memcpy(constants->projMatrix, &projMatrix, sizeof(projMatrix));
+#endif
+      }
+      devicecontext->Unmap(constantbuffer, 0);
+
+
       float col[] = { 0, 0, 0, 1 };
       devicecontext->ClearRenderTargetView(rendertargetview, col);
+      devicecontext->ClearDepthStencilView(depthbufferDSV, D3D11_CLEAR_DEPTH, 1.0f, 0);
+
+#ifdef ENABLE_3D
+      devicecontext->OMSetRenderTargets(1, &rendertargetview, depthbufferDSV);
+#else
+      devicecontext->OMSetRenderTargets(1, &rendertargetview, 0);
+#endif
       devicecontext->Draw(NUM_VERTICES, 0);
       swapchain->Present(1, 0);
     }
+
+    t += 0.01f;
   }
 }

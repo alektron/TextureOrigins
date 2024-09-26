@@ -1,6 +1,6 @@
 cbuffer constants : register(b0)
 {
-    float3x3 viewMatrix;
+    float4x4 viewMatrix;
 }
 
 struct vertexdata
@@ -23,7 +23,7 @@ SamplerState mysampler : register(s0);
 pixeldata vertex_shader(vertexdata vertex)
 {
     pixeldata output;
-    output.position = float4(mul(viewMatrix, float3(vertex.position, 1.0f)), 1);
+    output.position = float4(mul((float3x3)viewMatrix, float3(vertex.position, 1.0f)), 1);
     output.texcoord = vertex.texcoord;
 
     if (vertex.vertexid == 0) output.color = float4(1, 0, 0, 0);
